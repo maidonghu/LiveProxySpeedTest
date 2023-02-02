@@ -1,13 +1,14 @@
 package task
 
 import (
-	"bufio"
 	"io"
+	"log"
 	"math/rand"
 	"net"
-	"os"
 	"strings"
 	"time"
+
+	"github.com/imroc/req/v3"
 )
 
 func InitRandSeed() {
@@ -19,18 +20,17 @@ func isIPv4(ip string) bool {
 }
 
 func loadIPRanges(fileName string) (ips []*net.IPAddr) {
-	file, err := os.Open("./data/" + fileName + ".txt")
+	resp, err := req.C().R().Get("https://gh-proxy.com/https://raw.githubusercontent." +
+		"com/sec-an/LiveProxySpeedTest/main/data/" + fileName + ".txt")
 	if err != nil {
-		panic(err)
+		log.Fatal(err)
 	}
-	defer file.Close()
-	reader := bufio.NewReader(file)
-	for {
-		ip, err := reader.ReadString('\n')
+	for _, ip := range strings.Fields(resp.String()) {
 		ips = append(ips, &net.IPAddr{IP: net.ParseIP(strings.TrimSpace(ip))})
 		if err == io.EOF {
 			return
 		}
+
 	}
 	return
 }
