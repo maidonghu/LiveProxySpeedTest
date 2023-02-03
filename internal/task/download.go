@@ -114,6 +114,19 @@ func downloadHandler(tableName string, ip *common.CustomIPAddr) float64 {
 	}
 
 	elapsed := time.Since(start).Seconds()
+
+	if tableName == "bestv" {
+		channelId := resp.Header.Get("X-TXlive-ChannelId")
+		streamId := resp.Header.Get("X-TXlive-StreamId")
+		if channelId == "" || streamId == "" {
+			if channelId == "" && streamId == "" {
+				ip.Note = "大概率串台"
+			} else {
+				ip.Note = "小概率串台"
+			}
+		}
+	}
+
 	speed := float64(size) / elapsed
 	return speed
 }

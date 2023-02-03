@@ -49,14 +49,13 @@ func (ipData *IPData) getRecvRate() float32 {
 }
 
 func (ipData *IPData) toString() []string {
-	result := make([]string, 7)
+	result := make([]string, 6)
 	result[0] = ipData.IP.IPAddr.String()
 	result[1] = ipData.IP.Loc
-	result[2] = strconv.Itoa(ipData.Sended)
-	result[3] = strconv.Itoa(ipData.Received)
-	result[4] = strconv.FormatFloat(float64(ipData.getRecvRate()), 'f', 2, 32)
-	result[5] = strconv.FormatFloat(ipData.Delay.Seconds()*1000, 'f', 2, 32)
-	result[6] = strconv.FormatFloat(ipData.DownloadSpeed/1024/1024, 'f', 2, 32)
+	result[2] = strconv.FormatFloat(float64(ipData.getRecvRate()), 'f', 2, 32)
+	result[3] = strconv.FormatFloat(ipData.Delay.Seconds()*1000, 'f', 2, 32)
+	result[4] = strconv.FormatFloat(ipData.DownloadSpeed/1024/1024, 'f', 2, 32)
+	result[5] = ipData.IP.Note
 	return result
 }
 
@@ -72,7 +71,7 @@ func ExportCsv(tableName string, data []IPData) {
 	defer fp.Close()
 	fp.WriteString("\xEF\xBB\xBF") // 写入UTF-8 BOM，防止中文乱码
 	w := csv.NewWriter(fp)         // 创建一个新的写入文件流
-	_ = w.Write([]string{"IP 地址", "地理位置", "已发送", "已接收", "丢包率", "平均延迟", "下载速度 (MB/s)"})
+	_ = w.Write([]string{"IP 地址", "地理位置", "丢包率", "平均延迟", "下载速度 (MB/s)", "备注"})
 	_ = w.WriteAll(convertToString(data))
 	w.Flush()
 }
@@ -145,20 +144,19 @@ func (s DownloadSpeedSet) Print() {
 	}
 	t := table.NewWriter()
 	t.SetOutputMirror(os.Stdout)
-	t.AppendHeader(table.Row{"#", "IP 地址", "地理位置", "已发送", "已接收", "丢包率", "平均延迟", "下载速度 (MB/s)"})
+	t.AppendHeader(table.Row{"#", "IP 地址", "地理位置", "丢包率", "平均延迟", "下载速度 (MB/s)", "备注"})
 	for i := 0; i < PrintNum; i++ {
 		t.AppendRow([]interface{}{i, dateString[i][0], dateString[i][1], dateString[i][2], dateString[i][3],
-			dateString[i][4], dateString[i][5], dateString[i][6]})
+			dateString[i][4], dateString[i][5]})
 	}
 	t.SetColumnConfigs([]table.ColumnConfig{
 		{Name: "#", Align: text.AlignCenter, AlignFooter: text.AlignCenter, AlignHeader: text.AlignCenter},
 		{Name: "IP 地址", Align: text.AlignCenter, AlignFooter: text.AlignCenter, AlignHeader: text.AlignCenter},
 		{Name: "地理位置", Align: text.AlignCenter, AlignFooter: text.AlignCenter, AlignHeader: text.AlignCenter},
-		{Name: "已发送", Align: text.AlignCenter, AlignFooter: text.AlignCenter, AlignHeader: text.AlignCenter},
-		{Name: "已接收", Align: text.AlignCenter, AlignFooter: text.AlignCenter, AlignHeader: text.AlignCenter},
 		{Name: "丢包率", Align: text.AlignCenter, AlignFooter: text.AlignCenter, AlignHeader: text.AlignCenter},
 		{Name: "平均延迟", Align: text.AlignCenter, AlignFooter: text.AlignCenter, AlignHeader: text.AlignCenter},
 		{Name: "下载速度 (MB/s)", Align: text.AlignCenter, AlignFooter: text.AlignCenter, AlignHeader: text.AlignCenter},
+		{Name: "备注", Align: text.AlignCenter, AlignFooter: text.AlignCenter, AlignHeader: text.AlignCenter},
 	})
 	t.SetStyle(table.StyleLight)
 	t.Render()
