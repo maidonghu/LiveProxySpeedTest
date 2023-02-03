@@ -1,6 +1,7 @@
 package task
 
 import (
+	"LiveProxySpeedTest/internal/common"
 	"LiveProxySpeedTest/internal/utils"
 	"fmt"
 	"net"
@@ -26,7 +27,7 @@ var (
 type Ping struct {
 	wg      *sync.WaitGroup
 	m       *sync.Mutex
-	ips     []*net.IPAddr
+	ips     []*common.CustomIPAddr
 	csv     utils.PingDelaySet
 	control chan bool
 	bar     *utils.Bar
@@ -73,20 +74,20 @@ func (p *Ping) Run() utils.PingDelaySet {
 	return p.csv
 }
 
-func (p *Ping) start(ip *net.IPAddr) {
+func (p *Ping) start(ip *common.CustomIPAddr) {
 	defer p.wg.Done()
 	p.tcpingHandler(ip)
 	<-p.control
 }
 
 // bool connectionSucceed float32 time
-func (p *Ping) tcping(ip *net.IPAddr) (bool, time.Duration) {
+func (p *Ping) tcping(ip *common.CustomIPAddr) (bool, time.Duration) {
 	startTime := time.Now()
 	var fullAddress string
-	if isIPv4(ip.String()) {
-		fullAddress = fmt.Sprintf("%s:%d", ip.String(), TCPPort)
+	if isIPv4(ip.IPAddr.String()) {
+		fullAddress = fmt.Sprintf("%s:%d", ip.IPAddr.String(), TCPPort)
 	} else {
-		fullAddress = fmt.Sprintf("[%s]:%d", ip.String(), TCPPort)
+		fullAddress = fmt.Sprintf("[%s]:%d", ip.IPAddr.String(), TCPPort)
 	}
 	conn, err := net.DialTimeout("tcp", fullAddress, tcpConnectTimeout)
 	if err != nil {
@@ -98,7 +99,7 @@ func (p *Ping) tcping(ip *net.IPAddr) (bool, time.Duration) {
 }
 
 // pingReceived pingTotalTime
-func (p *Ping) checkConnection(ip *net.IPAddr) (recv int, totalDelay time.Duration) {
+func (p *Ping) checkConnection(ip *common.CustomIPAddr) (recv int, totalDelay time.Duration) {
 	for i := 0; i < PingTimes; i++ {
 		if ok, delay := p.tcping(ip); ok {
 			recv++
@@ -117,7 +118,7 @@ func (p *Ping) appendIPData(data *utils.PingData) {
 }
 
 // handle tcping
-func (p *Ping) tcpingHandler(ip *net.IPAddr) {
+func (p *Ping) tcpingHandler(ip *common.CustomIPAddr) {
 	recv, totalDlay := p.checkConnection(ip)
 	nowAble := len(p.csv)
 	if recv != 0 {

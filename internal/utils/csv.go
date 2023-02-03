@@ -1,40 +1,34 @@
 package utils
 
 import (
+	"LiveProxySpeedTest/internal/common"
 	"encoding/csv"
 	"fmt"
 	"log"
-	"net"
 	"os"
 	"strconv"
+	"strings"
 	"time"
+
+	"github.com/jedib0t/go-pretty/v6/text"
+
+	"github.com/jedib0t/go-pretty/v6/table"
 )
 
 const (
-	defaultOutput = "result.csv"
-	maxDelay      = 9999 * time.Millisecond
-	minDelay      = 0 * time.Millisecond
+	maxDelay = 9999 * time.Millisecond
+	minDelay = 0 * time.Millisecond
 )
 
 var (
 	InputMaxDelay = maxDelay
 	InputMinDelay = minDelay
-	Output        = defaultOutput
-	PrintNum      = 10
+	Output        string
+	PrintNum      = 20
 )
 
-// 是否打印测试结果
-func NoPrintResult() bool {
-	return PrintNum == 0
-}
-
-// 是否输出到文件
-func noOutput() bool {
-	return Output == "" || Output == " "
-}
-
 type PingData struct {
-	IP       *net.IPAddr
+	IP       *common.CustomIPAddr
 	Sended   int
 	Received int
 	Delay    time.Duration
@@ -55,28 +49,30 @@ func (ipData *IPData) getRecvRate() float32 {
 }
 
 func (ipData *IPData) toString() []string {
-	result := make([]string, 6)
-	result[0] = ipData.IP.String()
-	result[1] = strconv.Itoa(ipData.Sended)
-	result[2] = strconv.Itoa(ipData.Received)
-	result[3] = strconv.FormatFloat(float64(ipData.getRecvRate()), 'f', 2, 32)
-	result[4] = strconv.FormatFloat(ipData.Delay.Seconds()*1000, 'f', 2, 32)
-	result[5] = strconv.FormatFloat(ipData.DownloadSpeed/1024/1024, 'f', 2, 32)
+	result := make([]string, 7)
+	result[0] = ipData.IP.IPAddr.String()
+	result[1] = ipData.IP.Loc
+	result[2] = strconv.Itoa(ipData.Sended)
+	result[3] = strconv.Itoa(ipData.Received)
+	result[4] = strconv.FormatFloat(float64(ipData.getRecvRate()), 'f', 2, 32)
+	result[5] = strconv.FormatFloat(ipData.Delay.Seconds()*1000, 'f', 2, 32)
+	result[6] = strconv.FormatFloat(ipData.DownloadSpeed/1024/1024, 'f', 2, 32)
 	return result
 }
 
-func ExportCsv(data []IPData) {
-	if noOutput() || len(data) == 0 {
-		return
-	}
+func ExportCsv(tableName string, data []IPData) {
+	cwd, _ := os.Getwd()
+	fileName := strings.Join([]string{tableName, "_", time.Now().Format("20060102150405"), ".csv"}, "")
+	Output = strings.Join([]string{cwd, fileName}, "/")
 	fp, err := os.Create(Output)
 	if err != nil {
 		log.Fatalf("创建文件[%s]失败：%v", Output, err)
 		return
 	}
 	defer fp.Close()
-	w := csv.NewWriter(fp) //创建一个新的写入文件流
-	_ = w.Write([]string{"IP 地址", "已发送", "已接收", "丢包率", "平均延迟", "下载速度 (MB/s)"})
+	fp.WriteString("\xEF\xBB\xBF") // 写入UTF-8 BOM，防止中文乱码
+	w := csv.NewWriter(fp)         // 创建一个新的写入文件流
+	_ = w.Write([]string{"IP 地址", "地理位置", "已发送", "已接收", "丢包率", "平均延迟", "下载速度 (MB/s)"})
 	_ = w.WriteAll(convertToString(data))
 	w.Flush()
 }
@@ -139,9 +135,6 @@ func (s DownloadSpeedSet) Swap(i, j int) {
 }
 
 func (s DownloadSpeedSet) Print() {
-	if NoPrintResult() {
-		return
-	}
 	if len(s) <= 0 { // IP数组长度(IP数量) 大于 0 时继续
 		fmt.Println("\n[信息] 完整测速结果 IP 数量为 0，跳过输出结果。")
 		return
@@ -150,20 +143,24 @@ func (s DownloadSpeedSet) Print() {
 	if len(dateString) < PrintNum {  // 如果IP数组长度(IP数量) 小于  打印次数，则次数改为IP数量
 		PrintNum = len(dateString)
 	}
-	headFormat := "%-16s%-5s%-5s%-5s%-6s%-11s\n"
-	dataFormat := "%-18s%-8s%-8s%-8s%-10s%-15s\n"
-	for i := 0; i < PrintNum; i++ { // 如果要输出的 IP 中包含 IPv6，那么就需要调整一下间隔
-		if len(dateString[i][0]) > 15 {
-			headFormat = "%-40s%-5s%-5s%-5s%-6s%-11s\n"
-			dataFormat = "%-42s%-8s%-8s%-8s%-10s%-15s\n"
-			break
-		}
-	}
-	fmt.Printf(headFormat, "IP 地址", "已发送", "已接收", "丢包率", "平均延迟", "下载速度 (MB/s)")
+	t := table.NewWriter()
+	t.SetOutputMirror(os.Stdout)
+	t.AppendHeader(table.Row{"#", "IP 地址", "地理位置", "已发送", "已接收", "丢包率", "平均延迟", "下载速度 (MB/s)"})
 	for i := 0; i < PrintNum; i++ {
-		fmt.Printf(dataFormat, dateString[i][0], dateString[i][1], dateString[i][2], dateString[i][3], dateString[i][4], dateString[i][5])
+		t.AppendRow([]interface{}{i, dateString[i][0], dateString[i][1], dateString[i][2], dateString[i][3],
+			dateString[i][4], dateString[i][5], dateString[i][6]})
 	}
-	if !noOutput() {
-		fmt.Printf("\n完整测速结果已写入 %v 文件，可使用记事本/表格软件查看。\n", Output)
-	}
+	t.SetColumnConfigs([]table.ColumnConfig{
+		{Name: "#", Align: text.AlignCenter, AlignFooter: text.AlignCenter, AlignHeader: text.AlignCenter},
+		{Name: "IP 地址", Align: text.AlignCenter, AlignFooter: text.AlignCenter, AlignHeader: text.AlignCenter},
+		{Name: "地理位置", Align: text.AlignCenter, AlignFooter: text.AlignCenter, AlignHeader: text.AlignCenter},
+		{Name: "已发送", Align: text.AlignCenter, AlignFooter: text.AlignCenter, AlignHeader: text.AlignCenter},
+		{Name: "已接收", Align: text.AlignCenter, AlignFooter: text.AlignCenter, AlignHeader: text.AlignCenter},
+		{Name: "丢包率", Align: text.AlignCenter, AlignFooter: text.AlignCenter, AlignHeader: text.AlignCenter},
+		{Name: "平均延迟", Align: text.AlignCenter, AlignFooter: text.AlignCenter, AlignHeader: text.AlignCenter},
+		{Name: "下载速度 (MB/s)", Align: text.AlignCenter, AlignFooter: text.AlignCenter, AlignHeader: text.AlignCenter},
+	})
+	t.SetStyle(table.StyleLight)
+	t.Render()
+	fmt.Printf("\n完整测速结果已写入 %v 文件，可使用记事本/表格软件查看。\n", Output)
 }

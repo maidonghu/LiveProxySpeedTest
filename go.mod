@@ -5,6 +5,7 @@ go 1.19
 require (
 	github.com/cheggaaa/pb/v3 v3.1.0
 	github.com/imroc/req/v3 v3.31.2
+	github.com/jedib0t/go-pretty/v6 v6.4.4
 )
 
 require (
