@@ -21,7 +21,7 @@ func isIPv4(ip string) bool {
 }
 
 func loadIPRanges(fileName string) (ips []*common.CustomIPAddr) {
-	resp, err := req.C().R().Get("https://gh-proxy.com/https://raw.githubusercontent.com/sec-an/LiveProxySpeedTest/main/data/" + fileName + ".txt")
+	resp, err := req.C().R().Get("https://raw.githubusercontent.com/maidonghu/LiveProxySpeedTest/main/data/" + fileName + ".txt")
 	if err != nil {
 		log.Fatal(err)
 	}
