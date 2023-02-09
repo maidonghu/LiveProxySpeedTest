@@ -1,2 +1,2 @@
 肥羊BESTV,#genre# 
-CCTV1 8M,https://live.v1.mk/api/bestv.php?id=cctv1hd8m/8000000
+CCTV1 8M,http://live.v1.mk/api/bestv.php?id=cctv1hd8m/8000000
